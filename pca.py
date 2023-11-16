@@ -20,7 +20,7 @@ def get_images(path):
     return image_list
 
 
-def load_images(path=u'./FaceDB_orl', split_rate=1.0):  # 加载图像集，随机选择sampleCount张图片用于训练
+def load_images(path=u'./FaceDB_orl'):  # 加载图像集，随机选择sampleCount张图片用于训练
     data = []  # 单个文件夹下的数据集
     x_train = []  # 总训练集
     y_train = []  # 总训练集的标签
@@ -31,10 +31,9 @@ def load_images(path=u'./FaceDB_orl', split_rate=1.0):  # 加载图像集，随�
 
         data = [cv2.imread(image, 0) for image in get_images(folder)]  # ① cv2.imread()读取灰度图，0表示灰度图模式
 
-        data_train_num = int(np.array(data).shape[0] * split_rate)
+        data_train_num = int(np.array(data).shape[0])
 
-        data_train_indexs = random.sample(range(10),
-                                          data_train_num)  # random.data_train_indexs()从0-9中随机选择sampleCount个元素，return a new list
+        data_train_indexs = range(10)
 
         x_train.extend([data[i].ravel() for i in range(10) if i in data_train_indexs])
 
@@ -45,34 +44,58 @@ def load_images(path=u'./FaceDB_orl', split_rate=1.0):  # 加载图像集，随�
 
 def pca(x_train, dim):
     '''
-    主成分分析，将10304维度的数据降维到100维
+    主成分分析，将10304维度的数据降维到dim维
     :param x_train: 训练集
     :param dim: 降到k维
     :return:
     '''
     x_train = np.asmatrix(x_train, np.float32)  # 转换成矩阵
-    num_train = x_train.shape[0]  # 取矩阵的维度 → (320, 10304)
+    num_train = x_train.shape[0]  # 取矩阵的维度 → (400, 10304)
 
     # 求每一行的均值
     data_mean = np.mean(x_train, axis=0)  # axis = 0：压缩行，对各列求均值 → 1 * n 矩阵
 
     # 零均值化：让矩阵X_train减去每一行的均值，得到零均值化后的矩阵Z
-    Z = x_train - np.tile(data_mean, (num_train, 1))  # np.tile()用于复制，这里让data_mean.shape从(1, 10304) → (320, 10304)
+    Z = x_train - data_mean
 
-    D, V = np.linalg.eig(Z * Z.T)  # 求协方差矩阵的特征值与特征向量
+    D, V = np.linalg.eig(Z@Z.T/ (len(Z.T) - 1)) # 求协方差矩阵的特征值与特征向量
 
-    # V1.shape - (320,100)
+    # V1.shape - (400,100)
     V1 = V[:, 0:dim]  # 按列取前dim个特征向量（降到多少维就取前多少个特征向量）
 
-    V1 = Z.T * V1  # 小矩阵特征向量向大矩阵特征向量过渡
+    #V2.shape - (10304,100)
+    V2 = Z.T * V1  # 小矩阵特征向量向大矩阵特征向量过渡
 
-    # 降维 - Z*V1
-    return np.array(Z * V1), data_mean, V1
+    # X_approx = np.dot(Z, V2).T + data_mean
+    # print(X_approx.shape)
+    # img_approx = np.empty((0, 92, 112))
+    # for i in range (num_train):
+    #     img_approx= np.append(img_approx,[X_approx[i].reshape((92,112))],axis = 0)
+    #
+    # cv2.imshow('2',img_approx[20,:,:])
+    # cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    # 降维 - Z*V2
+    return np.array(Z * V2), data_mean, V2
 
+def reconstruct(X_approx,num_train):
+    img_approx = np.empty((0, 92, 112))
+    for i in range(num_train):
+        img_approx = np.append(img_approx, [X_approx[i].reshape((92, 112))], axis=0)
+    cv2.imshow('2', img_approx[20, :, :])
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 def predict(xTrain, yTrain, num_train, data_mean, x_test, V):
+    print('XTRAIN',xTrain.shape)
+    print('V',V.shape)
+    print('XV',(xTrain@V.T).shape)
+
+    reconstruct(xTrain@V.T,num_train)
+
     # 降维处理
     x_test_low_dim = np.array((x_test - np.tile(data_mean, (1, 1))) * V)
+    print(x_test_low_dim.shape)
 
     predict_result = yTrain[np.sum((xTrain - np.tile(x_test_low_dim, (num_train, 1))) ** 2, axis=1).argmin()]
     print(yTrain[np.sum((xTrain - np.tile(x_test_low_dim, (num_train, 1))) ** 2, axis=1).argsort()[:10]] + 1)
@@ -91,6 +114,7 @@ def predict_test(filename,dim):
     # 训练pca模型
     print("Start Traning.")
     x_train_low_dim, data_mean, V = pca(x_train, dim)  # shape(320, 100)
+
     print("Finish Traning.")
 
     print("\nStart Predicting.")
@@ -277,3 +301,6 @@ class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
 
 s = Qt_Window()
 s.init_ui()
+
+# """test"""
+# pca(x_train,300)
