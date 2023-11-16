@@ -1,8 +1,8 @@
 import numpy as np
 import cv2
 import os, random
-import sys  # 引用sys库
 from tkinter import filedialog
+import sys
 
 from PyQt5 import QtWidgets  # 引用PyQt5库里QtWidgets类
 from PyQt5.QtWidgets import *  # 导入PyQt5.QtWidgets里所有的方法
@@ -23,9 +23,7 @@ def get_images(path):
 def load_images(path=u'./FaceDB_orl', split_rate=1.0):  # 加载图像集，随机选择sampleCount张图片用于训练
     data = []  # 单个文件夹下的数据集
     x_train = []  # 总训练集
-    x_test = []  # 总测试集
     y_train = []  # 总训练集的标签
-    y_test = []  # 总测试集的标签
 
     # 遍历40个文件夹
     for k in range(40):
@@ -39,12 +37,10 @@ def load_images(path=u'./FaceDB_orl', split_rate=1.0):  # 加载图像集，随�
                                           data_train_num)  # random.data_train_indexs()从0-9中随机选择sampleCount个元素，return a new list
 
         x_train.extend([data[i].ravel() for i in range(10) if i in data_train_indexs])
-        x_test.extend([data[i].ravel() for i in range(10) if i not in data_train_indexs])
 
         y_train.extend([k] * data_train_num)  # 将文件夹名作为标签
-        y_test.extend([k] * (10 - data_train_num))
 
-    return np.array(x_train), np.array(y_train), np.array(x_test), np.array(y_test)
+    return np.array(x_train), np.array(y_train)
 
 
 def pca(x_train, dim):
@@ -87,16 +83,16 @@ def predict(xTrain, yTrain, num_train, data_mean, x_test, V):
     print('欧式距离识别的编号为 %d' % (predict_result + 1))
 
 
-x_train, y_train, x_test, y_test = load_images()  # (320,10304); (320); (80, 10304); (80);
-num_train, num_test = x_train.shape[0], x_test.shape[0]
-
-# 训练pca模型
-print("Start Traning.")
-x_train_low_dim, data_mean, V = pca(x_train, 300)  # shape(320, 100)
-print("Finish Traning.")
+x_train, y_train = load_images()  # (320,10304); (320); (80, 10304); (80);
+num_train = x_train.shape[0]
 
 
-def predict_test(filename):
+def predict_test(filename,dim):
+    # 训练pca模型
+    print("Start Traning.")
+    x_train_low_dim, data_mean, V = pca(x_train, dim)  # shape(320, 100)
+    print("Finish Traning.")
+
     print("\nStart Predicting.")
     # test_img = "test\\" + filename[-8:]
     test_img = filename
@@ -112,10 +108,13 @@ class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
 
     def init_ui(self):  # 定义方法，在该方法里构建界面组件
         self.win = QMainWindow()
+        self.win.setWindowTitle('pca')
 
         # 定义组件
         self.open_Button_address = QPushButton(self.win)  # 选择地址
         self.open_Button = QPushButton(self.win)  # 退出按钮
+        self.open_Button_predict = QPushButton(self.win)  # 预测按钮
+
         self.detect_image = QLabel(self.win)  # 图片（目前为标签控件，需要后续将其转换为图片控件）
         self.detect_image1 = QLabel(self.win)  # 图片（目前为标签控件，需要后续将其转换为图片控件）
         self.detect_image2 = QLabel(self.win)  # 图片（目前为标签控件，需要后续将其转换为图片控件）
@@ -138,24 +137,40 @@ class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
         self.label9 = QLabel(self.win)  # 文字
         self.label0 = QLabel(self.win)  # 文字
         self.label_txt = QLabel(self.win)  # 文字
+        self.label_txt1 = QLabel(self.win)  # 文字
+
+        self.comboBox = QComboBox(self.win)
+        self.comboBox.addItem('10')
+        self.comboBox.addItem('50')
+        self.comboBox.addItem('100')
+        self.comboBox.addItem('300')
+        self.comboBox.addItem('500')
+        self.comboBox.addItem('700')
 
         # 设置控件
         self.open_Button_address.resize(200, 50)
-        self.open_Button_address.move(600, 800)
+        self.open_Button_address.move(400, 800)
         self.open_Button_address.setText("选择文件")
         self.open_Button_address.setCheckable(True)
         self.open_Button_address.clicked.connect(self.select_file)
 
         self.open_Button.resize(200, 50)
-        self.open_Button.move(1000, 800)
+        self.open_Button.move(1200, 800)
         self.open_Button.setText("退出")
         self.open_Button.setCheckable(True)
         self.open_Button.clicked.connect(self.exit)
 
+        self.open_Button_predict.resize(100,50)
+        self.open_Button_predict.move(1000, 800)
+        self.open_Button_predict.setText("预测")
+        self.open_Button_predict.setCheckable(True)
+        self.open_Button_predict.clicked.connect(self.predict)
+
         self.detect_image.resize(92, 112)
         self.detect_image.move(450, 100)
-        self.label0.move(500, 500)
-        self.label_txt.move(450, 500)
+        self.label0.move(870, 850)
+        self.label_txt.move(800,850)
+        self.label_txt.setFont(QFont("Arial", 12))
         self.label_txt.setText('人脸应是')
 
         self.detect_image0.resize(92, 112)
@@ -191,6 +206,12 @@ class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
         self.label8.move(1100, 620)
         self.label9.move(1300, 620)
 
+        self.label_txt1.setText("维度选择")
+        self.label_txt1.setFont(QFont("Arial", 12))
+        self.label_txt1.move(720,810)
+        self.comboBox.resize(200,50)
+        self.comboBox.move(800,800)
+
         self.win.showMaximized()
         sys.exit(self._app.exec_())
 
@@ -201,7 +222,11 @@ class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
     def select_file(self):
         self.file_path = filedialog.askopenfilename()
         print("选择的文件路径：" + self.file_path)
-        predict_test(self.file_path)
+
+    def predict(self):
+        self.selected_text = int(self.comboBox.currentText())
+        print(self.selected_text)
+        predict_test(self.file_path, self.selected_text)
         self.show_img()
 
     def show_img(self):
