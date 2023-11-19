@@ -58,33 +58,28 @@ def pca(x_train, dim):
     # 零均值化：让矩阵X_train减去每一行的均值，得到零均值化后的矩阵Z
     Z = x_train - data_mean
 
-    D, V = np.linalg.eig(Z@Z.T/ (len(Z.T) - 1)) # 求协方差矩阵的特征值与特征向量
+    C = np.cov(Z,rowvar=True)
 
+    D, V = np.linalg.eig(C) # 求协方差矩阵的特征值与特征向量
+
+    V = np.sort(V,axis=1)[:, ::-1]
     # V1.shape - (400,100)
     V1 = V[:, 0:dim]  # 按列取前dim个特征向量（降到多少维就取前多少个特征向量）
+    print('V1',V1)
 
     #V2.shape - (10304,100)
     V2 = Z.T * V1  # 小矩阵特征向量向大矩阵特征向量过渡
 
-    # X_approx = np.dot(Z, V2).T + data_mean
-    # print(X_approx.shape)
-    # img_approx = np.empty((0, 92, 112))
-    # for i in range (num_train):
-    #     img_approx= np.append(img_approx,[X_approx[i].reshape((92,112))],axis = 0)
-    #
-    # cv2.imshow('2',img_approx[20,:,:])
-    # cv2.waitKey(0)
-    cv2.destroyAllWindows()
     # 降维 - Z*V2
     return np.array(Z * V2), data_mean, V2
 
 def reconstruct(X_approx,num_train):
     img_approx = np.empty((0, 92, 112))
-    for i in range(num_train):
-        img_approx = np.append(img_approx, [X_approx[i].reshape((92, 112))], axis=0)
-    cv2.imshow('2', img_approx[20, :, :])
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # for i in range(num_train):
+    #     img_approx = np.append(img_approx, [X_approx[i].reshape((92, 112))], axis=0)
+    # cv2.imshow('2', img_approx[20, :, :])
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
 def predict(xTrain, yTrain, num_train, data_mean, x_test, V):
     print('XTRAIN',xTrain.shape)
@@ -114,7 +109,6 @@ def predict_test(filename,dim):
     # 训练pca模型
     print("Start Traning.")
     x_train_low_dim, data_mean, V = pca(x_train, dim)  # shape(320, 100)
-
     print("Finish Traning.")
 
     print("\nStart Predicting.")
@@ -258,33 +252,32 @@ class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
         self.detect_image.setPixmap(pix)
 
         file_path1 = 'FaceDB_orl\\0'
-        print(file_path1 + '{:0>2}'.format(bestten[1] // 10) + "\\" + '{:0>2}'.format(bestten[1] % 10))
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[0] + 9) // 10) + "\\" + "{:0>2}".format(bestten[0] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[0] + 9) // 10) + "\\" + "{:0>2}".format((bestten[0] - (bestten[0]-1) // 10 *10) % 11) + ".png")
         self.detect_image0.setPixmap(pix)
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[1] + 9) // 10) + "\\" + "{:0>2}".format(bestten[1] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[1] + 9) // 10) + "\\" + "{:0>2}".format((bestten[1] - (bestten[1]-1) // 10 *10) % 11) + ".png")
         self.detect_image1.setPixmap(pix)
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[2] + 9) // 10) + "\\" + "{:0>2}".format(bestten[2] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[2] + 9) // 10) + "\\" + "{:0>2}".format((bestten[2] - (bestten[2]-1) // 10 *10)% 11) + ".png")
         self.detect_image2.setPixmap(pix)
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[3] + 9) // 10) + "\\" + "{:0>2}".format(bestten[3] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[3] + 9) // 10) + "\\" + "{:0>2}".format((bestten[3] - (bestten[3]-1) // 10 *10) % 11) + ".png")
         self.detect_image3.setPixmap(pix)
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[4] + 9) // 10) + "\\" + "{:0>2}".format(bestten[4] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[4] + 9) // 10) + "\\" + "{:0>2}".format((bestten[4] - (bestten[4]-1) // 10 *10) % 11) + ".png")
         self.detect_image4.setPixmap(pix)
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[5] + 9) // 10) + "\\" + "{:0>2}".format(bestten[5] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[5] + 9) // 10) + "\\" + "{:0>2}".format((bestten[5] - (bestten[5]-1) // 10 *10) % 11) + ".png")
         self.detect_image5.setPixmap(pix)
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[6] + 9) // 10) + "\\" + "{:0>2}".format(bestten[6] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[6] + 9) // 10) + "\\" + "{:0>2}".format((bestten[6] - (bestten[6]-1) // 10 *10) % 11) + ".png")
         self.detect_image6.setPixmap(pix)
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[7] + 9) // 10) + "\\" + "{:0>2}".format(bestten[7] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[7] + 9) // 10) + "\\" + "{:0>2}".format((bestten[7] - (bestten[7]-1) // 10 *10) % 11) + ".png")
         self.detect_image7.setPixmap(pix)
         pix = QPixmap(
-            file_path1 + "{:0>2}".format((bestten[8] + 9) // 10) + "\\" + "{:0>2}".format(bestten[8] % 10 + 1) + ".png")
+            file_path1 + "{:0>2}".format((bestten[8] + 9) // 10) + "\\" + "{:0>2}".format((bestten[8] - (bestten[8]-1) // 10 *10) % 11) + ".png")
         self.detect_image8.setPixmap(pix)
 
         self.label0.setText("{:0>2}".format((bestten[0] + 9) // 10))
