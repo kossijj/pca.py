@@ -62,10 +62,10 @@ def pca(x_train, dim):
 
     D, V = np.linalg.eig(C) # 求协方差矩阵的特征值与特征向量
 
-    V = np.sort(V,axis=1)[:, ::-1]
+    sorted_index = np.argsort(D)
+
     # V1.shape - (400,100)
-    V1 = V[:, 0:dim]  # 按列取前dim个特征向量（降到多少维就取前多少个特征向量）
-    print('V1',V1)
+    V1 = V[:, sorted_index[-1:-dim:-1]]  # 按列取前dim个特征向量（降到多少维就取前多少个特征向量）
 
     #V2.shape - (10304,100)
     V2 = Z.T * V1  # 小矩阵特征向量向大矩阵特征向量过渡
