@@ -21,14 +21,13 @@ def get_images(path):
     return image_list
 
 
-def load_images(path=u'./FaceDB_orl'):  # 加载图像集，随机选择sampleCount张图片用于训练
+def load_images(path=u'./FaceDB_orl'):  # 加载图像集
     x_train = []  # 总训练集
     y_train = []  # 总训练集的标签
 
     # 遍历40个文件夹
     for k in range(40):
         folder = os.path.join(path, '%03d' % (k + 1))  # 当前文件夹
-
         data = [cv2.imread(image, 0) for image in get_images(folder)]  # ① cv2.imread()读取灰度图，0表示灰度图模式
         # data = [cv2.resize(cv2.imread(image, 0),dsize=(64,64)) for image in get_images(folder)]  # 修改尺寸比较
         data_train_num = int(np.array(data).shape[0])
@@ -50,27 +49,38 @@ def pca(x_train, dim):
     x_train = np.asmatrix(x_train, np.float32)  # 转换成矩阵
 
     # 求每一行的均值
-    data_mean = np.mean(x_train, axis=0)  # axis = 0：压缩行，对各列求均值 → 1 * n 矩阵
+    data_mean = np.mean(x_train, axis=0)  # axis = 0：压缩行，对各列求均值 → 1 * dim 矩阵
 
     # 零均值化：让矩阵X_train减去每一行的均值，得到零均值化后的矩阵Z
+    #Z.shape - (400,10304)
     Z = x_train - data_mean
 
     C = np.cov(Z,rowvar=True)
 
+
     D, V = np.linalg.eig(C) # 求协方差矩阵的特征值与特征向量
 
-    sorted_index = np.argsort(D)
+    sorted_index = np.argsort(D) #从小到大排序
 
+    print("sorted_index",sorted_index.shape)
+    print("dim2",dim)
     # V1.shape - (400,dim)
     V1 = V[:, sorted_index[-1:-dim-1:-1]]  # 按列取前dim个特征向量（降到多少维就取前多少个特征向量）
 
+    print('V1',V1.shape)
+
     #V2.shape - (10304,dim)
-    V2 = Z.T * V1  # 小矩阵特征向量向大矩阵特征向量过渡
+    V2 = Z.T @ V1  # 小矩阵特征向量向大矩阵特征向量过渡
 
     # 降维 - Z*V2
     return np.array(Z * V2), data_mean, V2
 
-
+def pca_inverse(reduced_data, data_mean, V2):
+    # 将降维后的数据乘以特征向量矩阵的转置，并加上原始数据的均值
+    # 这一步是数据从降维空间映射回原始高维空间的过程
+    # 结果是恢复后的数据
+    restored_data = reduced_data @ V2.T + data_mean
+    return np.array(restored_data)
 
 def predict(xTrain, yTrain, num_train, data_mean, x_test, V):
 
@@ -91,10 +101,22 @@ num_train = x_train.shape[0]
 
 
 def predict_test(filename,dim):
+    print("dim1",dim)
     # 训练pca模型
     print("Start Traning.")
     x_train_low_dim, data_mean, V = pca(x_train, dim)  # shape(320, 100)
     print("Finish Traning.")
+
+    restored_data = pca_inverse(x_train_low_dim, data_mean, V)
+    image_height = 92
+    image_width = 112
+    num_images= 400
+    reshaped_images = restored_data.reshape(num_images, image_width, image_height)
+    for i in range(num_images):
+        first_restored_image = reshaped_images[i]
+        # 将图像数据转换为 uint8 类型，适合 OpenCV 的显示或保存
+        # first_restored_image = np.uint8(first_restored_image)
+        cv2.imwrite('img_restored/'+'first_restored_image'+ str(i) + '.jpg', first_restored_image)
 
     print("\nStart Predicting.")
     # test_img = "test\\" + filename[-8:]
@@ -144,12 +166,14 @@ class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
         self.label_txt1 = QLabel(self.win)  # 文字
 
         self.comboBox = QComboBox(self.win)
-        self.comboBox.addItem('10')
-        self.comboBox.addItem('50')
         self.comboBox.addItem('100')
         self.comboBox.addItem('300')
-        self.comboBox.addItem('500')
-        self.comboBox.addItem('700')
+        self.comboBox.addItem('600')
+        self.comboBox.addItem('900')
+        self.comboBox.addItem('1200')
+        self.comboBox.addItem('1500')
+        self.comboBox.addItem('2000')
+        self.comboBox.addItem('6000')
 
         # 设置控件
         self.open_Button_address.resize(200, 50)
@@ -229,7 +253,7 @@ class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
 
     def predict(self):
         self.selected_text = int(self.comboBox.currentText())
-        print(self.selected_text)
+        print("dim",self.selected_text)
         predict_test(self.file_path, self.selected_text)
         self.show_img()
 
