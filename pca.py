@@ -41,39 +41,39 @@ def load_images(path=u'./FaceDB_orl'):  # 加载图像集
 
 def pca(x_train, dim):
     '''
-    主成分分析，将10304维度的数据降维到dim维
+    主成分分析，将4096维度的数据降维到dim维
     :param x_train: 训练集
     :param dim: 降到k维
     :return:
     '''
     x_train = np.asmatrix(x_train, np.float32)  # 转换成矩阵
+    print(x_train.shape)
 
     # 求每一行的均值
     data_mean = np.mean(x_train, axis=0)  # axis = 0：压缩行，对各列求均值 → 1 * dim 矩阵
+    print(data_mean.shape)
 
     # 零均值化：让矩阵X_train减去每一行的均值，得到零均值化后的矩阵Z
-    #Z.shape - (400,10304)
+    #Z.shape - (400,4096)
     Z = x_train - data_mean
 
-    C = np.cov(Z,rowvar=True)
-
+    C = np.cov(Z.T,rowvar=True)
+    print('C',C.shape)
 
     D, V = np.linalg.eig(C) # 求协方差矩阵的特征值与特征向量
 
     sorted_index = np.argsort(D) #从小到大排序
 
-    print("sorted_index",sorted_index.shape)
-    print("dim2",dim)
-    # V1.shape - (400,dim)
+    # V1.shape - (4096,dim)
     V1 = V[:, sorted_index[-1:-dim-1:-1]]  # 按列取前dim个特征向量（降到多少维就取前多少个特征向量）
 
     print('V1',V1.shape)
 
-    #V2.shape - (10304,dim)
-    V2 = Z.T @ V1  # 小矩阵特征向量向大矩阵特征向量过渡
+    #V2.shape - (400,dim)
+    V2 = Z @ V1  # 小矩阵特征向量向大矩阵特征向量过渡
 
     # 降维 - Z*V2
-    return np.array(Z * V2), data_mean, V2
+    return np.array(Z.T * V2), data_mean.T, V2,V1
 
 def pca_inverse(reduced_data, data_mean, V2):
     # 将降维后的数据乘以特征向量矩阵的转置，并加上原始数据的均值
@@ -82,18 +82,18 @@ def pca_inverse(reduced_data, data_mean, V2):
     restored_data = reduced_data @ V2.T + data_mean
     return np.array(restored_data)
 
-def predict(xTrain, yTrain, num_train, data_mean, x_test, V):
-
-    # 降维处理
-    x_test_low_dim = np.array((x_test - np.tile(data_mean, (1, 1))) * V) #1*dim
-
-    predict_result = yTrain[np.sum((xTrain - np.tile(x_test_low_dim, (num_train, 1))) ** 2, axis=1).argmin()]
-    print(yTrain[np.sum((xTrain - np.tile(x_test_low_dim, (num_train, 1))) ** 2, axis=1).argsort()[:10]] + 1)
-    global bestten
-    bestten = np.sum((xTrain - np.tile(x_test_low_dim, (num_train, 1))) ** 2, axis=1).argsort()[:10] + 1
-    print('bestten', bestten)
-
-    print('欧式距离识别的编号为 %d' % (predict_result + 1))
+# def predict(xTrain, yTrain, num_train, data_mean, x_test, V):
+#
+#     # 降维处理
+#     x_test_low_dim = np.array((x_test - np.tile(data_mean, (1, 1))) * V) #1*dim
+#
+#     predict_result = yTrain[np.sum((xTrain - np.tile(x_test_low_dim, (num_train, 1))) ** 2, axis=1).argmin()]
+#     print(yTrain[np.sum((xTrain - np.tile(x_test_low_dim, (num_train, 1))) ** 2, axis=1).argsort()[:10]] + 1)
+#     global bestten
+#     bestten = np.sum((xTrain - np.tile(x_test_low_dim, (num_train, 1))) ** 2, axis=1).argsort()[:10] + 1
+#     print('bestten', bestten)
+#
+#     print('欧式距离识别的编号为 %d' % (predict_result + 1))
 
 
 x_train, y_train = load_images()  # (320,10304); (320); (80, 10304); (80);
@@ -104,27 +104,41 @@ def predict_test(filename,dim):
     print("dim1",dim)
     # 训练pca模型
     print("Start Traning.")
-    x_train_low_dim, data_mean, V = pca(x_train, dim)  # shape(320, 100)
+    x_train_low_dim, data_mean, V2,V1 = pca(x_train, dim)  # shape(320, 100)
     print("Finish Traning.")
 
-    restored_data = pca_inverse(x_train_low_dim, data_mean, V)
-    image_height = 92
-    image_width = 112
-    num_images= 400
-    reshaped_images = restored_data.reshape(num_images, image_width, image_height)
-    for i in range(num_images):
-        first_restored_image = reshaped_images[i]
-        # 将图像数据转换为 uint8 类型，适合 OpenCV 的显示或保存
-        # first_restored_image = np.uint8(first_restored_image)
-        cv2.imwrite('img_restored/'+'first_restored_image'+ str(i) + '.jpg', first_restored_image)
+    # restored_data = pca_inverse(x_train_low_dim, data_mean, V)
+    # image_height = 92
+    # image_width = 112
+    # num_images= 400
+    # reshaped_images = restored_data.reshape(num_images, image_width, image_height)
+    # for i in range(num_images):
+    #     first_restored_image = reshaped_images[i]
+    #     # 将图像数据转换为 uint8 类型，适合 OpenCV 的显示或保存
+    #     # first_restored_image = np.uint8(first_restored_image)
+    #     cv2.imwrite('img_restored/'+'first_restored_image'+ str(i) + '.jpg', first_restored_image)
 
     print("\nStart Predicting.")
     # test_img = "test\\" + filename[-8:]
-    test_img = filename
-    predict(x_train_low_dim, y_train, num_train, data_mean, cv2.imread(test_img, 0).ravel(), V)
-    # predict(x_train_low_dim, y_train, num_train, data_mean, cv2.resize(cv2.imread(test_img, 0),dsize=(64,64)).ravel(), V)#修改尺寸
-    print("Finish Predicting.")
+    resized_img = cv2.resize(cv2.imread(filename, 0), dsize=(64, 64)).ravel()
+    resized_img = resized_img - data_mean
+    reduce_image = np.dot(resized_img, V1)
+    distance = []
 
+    for i in range(0, 400):
+        # print(new_data[i])
+        print(np.linalg.norm(reduce_image - V2[i]))
+        # print(i)
+        ca = np.linalg.norm(reduce_image - V2[i])
+        print(ca)
+        distance.append(np.linalg.norm(ca))
+
+    global bestten
+    bestten = np.argsort(distance)[:9]
+    print(bestten)
+    print(y_train[bestten] + 1)
+    print('欧式距离识别的编号为 %d' % (bestten[0] + 1))
+    print("Finish Predicting.")
 
 class Qt_Window(QWidget):  # 定义一个类，继承于QWidget
     def __init__(self):  # 构建方法
