@@ -318,3 +318,61 @@ s.init_ui()
 
 # """test"""
 # pca(x_train,300)
+def get_random_image(folder_path): #随机获取图片
+    # 获取文件夹列表
+    folders = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
+
+    # 随机选择一个文件夹
+    random_folder = random.choice(folders)
+
+    # 构建被选中文件夹的路径
+    selected_folder_path = os.path.join(folder_path, random_folder)
+
+    # 获取文件夹中的所有图片
+    images = [f for f in os.listdir(selected_folder_path) if f.endswith(".png")]
+
+    # 随机选择一张图片
+    random_image = random.choice(images)
+
+    # 构建被选中图片的路径
+    selected_image_path = os.path.join(selected_folder_path, random_image)
+
+    return selected_image_path
+
+# 使用示例
+folder_path = 'FaceDB_orl/'
+random_image_path = get_random_image(folder_path)
+
+def predict_score():
+    score_five = []
+    score_nine = []
+    for i in range(100,2000,300):
+      score_temp_five = 0
+      score_full_five = 0
+      score_temp_nine = 0
+      score_full_nine = 0
+      for j in range(200):
+        filename = get_random_image(folder_path)
+        predict_test(filename,i)
+        for k in range(1,5):
+          if y_train[bestten[0]] == y_train[bestten[k]]:
+            score_temp_five = score_temp_five + 1
+          score_full_five = score_full_five + 1
+        for k in range(1,9):
+          if y_train[bestten[0]] == y_train[bestten[k]]:
+            score_temp_nine = score_temp_nine + 1
+          score_full_nine = score_full_nine + 1
+      score_five.append(score_temp_five/score_full_five)
+      score_nine.append(score_temp_nine/score_full_nine)
+
+      #draw
+      x = range(100, 2000, 300)
+      plt.plot(x, score_five, label='top-five')
+      plt.plot(x, score_nine, label='top-nine')
+      plt.xlabel('dim')  # 设置X轴标签
+      plt.ylabel('score')  # 设置Y轴标签
+      plt.legend()  # 显示图例
+      plt.grid(True)  # 显示网格线
+      plt.show()  # 显示图表
+
+# predict_score()
